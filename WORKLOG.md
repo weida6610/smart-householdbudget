@@ -25,6 +25,10 @@
 - Captured current deployment inputs without storing the Telegram token in source files:
   - `OWNER_CHAT_ID`: `8958254633`
   - `SPREADSHEET_ID`: `1h1qhOeeWEDF_doYncAd2eBhXADj18MaM6DX9XTheqf4`
+- Bound clasp to Apps Script project `125HR5Ws7v6wSGcOCi7zpIVHEmo13cgH25GJAatJghQfjZcrIvIFGqSOg`.
+- Created deployment `AKfycbyjA1YADkipF30Kwcm1Hxobnjf3zEaZrfVj-4ERb5LPvMyDwbOUsloBNJJzU-sPqQp_jQ` and configured default public URLs in code.
+- Changed the Web App manifest to `ANYONE_ANONYMOUS` for Telegram webhook / Mini App use after user approval.
+- Added `WEBHOOK_SECRET` generation and query-token validation for Telegram webhook POSTs.
 - Local checks completed:
   - `npm.cmd test` passed.
   - Preview server responded at `http://127.0.0.1:8125/`.

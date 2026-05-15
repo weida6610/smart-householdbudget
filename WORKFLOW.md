@@ -29,4 +29,5 @@
 - Keep Telegram token and app shared secret in Apps Script Properties only.
 - Do not commit `.clasp.json`, bot tokens, or app keys.
 - Use Telegram initData validation for normal Mini App use.
+- Use `setupTelegramWebhook()` after deployment so Telegram webhook requests include the generated `WEBHOOK_SECRET` query token.
 - The fallback `APP_SHARED_SECRET` is for personal browser access only.

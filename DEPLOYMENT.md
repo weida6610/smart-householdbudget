@@ -89,6 +89,8 @@ Then run these functions once in Apps Script:
 2. `setupTelegramWebhook()`
 3. `setupTelegramMenu()`
 
+`setupTelegramWebhook()` creates a random `WEBHOOK_SECRET` Script Property if it does not already exist, then registers Telegram webhook with that secret in the webhook URL query string. Apps Script web apps do not expose incoming HTTP headers to `doPost(e)`, so the Telegram header-based secret is not usable directly in this GAS endpoint.
+
 ## 5. Telegram Checks
 
 In Telegram, open the bot and send:
@@ -119,4 +121,3 @@ If not inside Telegram, go to `設定` and enter:
 - Browser App Key: the `APP_SHARED_SECRET`, if you configured it.
 
 Telegram Mini App use should not need the browser app key because it uses Telegram `initData` validation.
-

@@ -7,8 +7,16 @@ var CONFIG = {
   MINI_APP_URL: 'MINI_APP_URL',
   GAS_WEBAPP_URL: 'GAS_WEBAPP_URL',
   APP_SHARED_SECRET: 'APP_SHARED_SECRET',
+  WEBHOOK_SECRET: 'WEBHOOK_SECRET',
   MAX_INITDATA_AGE_SECONDS: 'MAX_INITDATA_AGE_SECONDS',
   AUTH_DISABLED: 'AUTH_DISABLED'
+};
+
+var DEFAULT_PROPERTIES = {
+  OWNER_CHAT_ID: '8958254633',
+  SPREADSHEET_ID: '1h1qhOeeWEDF_doYncAd2eBhXADj18MaM6DX9XTheqf4',
+  GAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbyjA1YADkipF30Kwcm1Hxobnjf3zEaZrfVj-4ERb5LPvMyDwbOUsloBNJJzU-sPqQp_jQ/exec',
+  MINI_APP_URL: 'https://weida6610.github.io/smart-householdbudget/?api=https%3A%2F%2Fscript.google.com%2Fmacros%2Fs%2FAKfycbyjA1YADkipF30Kwcm1Hxobnjf3zEaZrfVj-4ERb5LPvMyDwbOUsloBNJJzU-sPqQp_jQ%2Fexec'
 };
 
 var SHEETS = {
@@ -61,6 +69,7 @@ function doPost(e) {
   try {
     var body = parseBody(e);
     if (isTelegramUpdate(body)) {
+      requireValidWebhookSecret(e);
       handleTelegramUpdate(body);
       return jsonResponse({ ok: true });
     }
@@ -77,6 +86,16 @@ function parseBody(e) {
 
 function isTelegramUpdate(body) {
   return body && (body.update_id || body.message || body.callback_query);
+}
+
+function requireValidWebhookSecret(e) {
+  var expectedSecret = getProp(CONFIG.WEBHOOK_SECRET);
+  if (!expectedSecret) throw new Error('WEBHOOK_SECRET is not configured. Run setupTelegramWebhook() first.');
+
+  var actualSecret = e && e.parameter ? e.parameter.webhook_secret : '';
+  if (!actualSecret || !constantTimeEquals(actualSecret, expectedSecret)) {
+    throw new Error('Invalid Telegram webhook secret');
+  }
 }
 
 function handleApiRequest(body) {
@@ -108,7 +127,7 @@ function getProps() {
 }
 
 function getProp(name) {
-  return getProps().getProperty(name);
+  return getProps().getProperty(name) || DEFAULT_PROPERTIES[name] || '';
 }
 
 function isAuthDisabled() {
@@ -630,7 +649,13 @@ function answerCallbackQuery(callbackQueryId, text) {
 function setupTelegramWebhook() {
   var url = getProp(CONFIG.GAS_WEBAPP_URL);
   if (!url) throw new Error('GAS_WEBAPP_URL is not configured');
-  return telegramApi('setWebhook', { url: url });
+  var webhookSecret = getOrCreateWebhookSecret();
+  var webhookUrl = appendQuery(url, 'webhook_secret', webhookSecret);
+
+  return telegramApi('setWebhook', {
+    url: webhookUrl,
+    drop_pending_updates: false
+  });
 }
 
 function setupTelegramMenu() {
@@ -654,3 +679,38 @@ function setupTelegramMenu() {
   });
 }
 
+function configureDeploymentUrls(gasWebAppUrl, miniAppUrl) {
+  if (!gasWebAppUrl) throw new Error('gasWebAppUrl is required');
+  if (!miniAppUrl) throw new Error('miniAppUrl is required');
+
+  getProps().setProperties({
+    GAS_WEBAPP_URL: gasWebAppUrl,
+    MINI_APP_URL: miniAppUrl
+  }, false);
+
+  return {
+    gasWebAppUrl: gasWebAppUrl,
+    miniAppUrl: miniAppUrl
+  };
+}
+
+function configureKnownDeploymentUrls() {
+  var gasWebAppUrl = 'https://script.google.com/macros/s/AKfycbyjA1YADkipF30Kwcm1Hxobnjf3zEaZrfVj-4ERb5LPvMyDwbOUsloBNJJzU-sPqQp_jQ/exec';
+  var miniAppUrl = 'https://weida6610.github.io/smart-householdbudget/?api=' + encodeURIComponent(gasWebAppUrl);
+  return configureDeploymentUrls(gasWebAppUrl, miniAppUrl);
+}
+
+function getOrCreateWebhookSecret() {
+  var props = getProps();
+  var secret = props.getProperty(CONFIG.WEBHOOK_SECRET);
+  if (!secret) {
+    secret = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+    props.setProperty(CONFIG.WEBHOOK_SECRET, secret);
+  }
+  return secret;
+}
+
+function appendQuery(url, key, value) {
+  var separator = url.indexOf('?') === -1 ? '?' : '&';
+  return url + separator + encodeURIComponent(key) + '=' + encodeURIComponent(value);
+}
