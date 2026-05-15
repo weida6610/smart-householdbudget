@@ -149,7 +149,7 @@ function isAuthDisabled() {
 }
 
 function requireAuthorizedActor(body) {
-  var ownerChatId = getProp(CONFIG.OWNER_CHAT_ID);
+  var ownerChatId = normalizeChatId(getProp(CONFIG.OWNER_CHAT_ID));
 
   if (isAuthDisabled()) {
     return { chatId: ownerChatId || 'local-dev', user: { id: ownerChatId || 'local-dev' }, method: 'disabled' };
@@ -168,7 +168,7 @@ function requireAuthorizedActor(body) {
   }
 
   if (!actor) throw new Error('Unauthorized request');
-  if (ownerChatId && String(actor.chatId) !== String(ownerChatId)) throw new Error('Unauthorized owner. Current chat_id: ' + actor.chatId);
+  if (ownerChatId && normalizeChatId(actor.chatId) !== ownerChatId) throw new Error('Unauthorized owner. Current chat_id: ' + actor.chatId);
   return actor;
 }
 
@@ -649,7 +649,7 @@ function handleTelegramUpdate(update) {
 }
 
 function handleTelegramMessage(message) {
-  var chatId = String(message.chat.id);
+  var chatId = normalizeChatId(message.chat.id);
   var text = String(message.text || '').trim();
   if (isRateLimitedTelegramMessage(chatId, text)) return;
 
@@ -658,8 +658,9 @@ function handleTelegramMessage(message) {
     return;
   }
 
-  var ownerChatId = getProp(CONFIG.OWNER_CHAT_ID);
-  if (ownerChatId && chatId !== String(ownerChatId)) {
+  var ownerChatId = normalizeChatId(getProp(CONFIG.OWNER_CHAT_ID));
+  if (ownerChatId && chatId !== ownerChatId) {
+    sendUnauthorizedHint(chatId, ownerChatId);
     return;
   }
 
@@ -694,6 +695,20 @@ function handleTelegramMessage(message) {
 
 function isWhoamiCommand(text) {
   return /^\/whoami(@[A-Za-z0-9_]+)?$/i.test(String(text || '').trim()) || text === '我的ID';
+}
+
+function normalizeChatId(value) {
+  return String(value || '').trim();
+}
+
+function sendUnauthorizedHint(chatId, ownerChatId) {
+  var props = getProps();
+  var key = 'TG_UNAUTHORIZED_HINT_' + chatId;
+  var now = Date.now();
+  var last = Number(props.getProperty(key) || '0');
+  if (now - last < 30000) return;
+  props.setProperty(key, String(now));
+  sendTelegramMessage(chatId, '目前 chat_id：' + chatId + '\nOWNER_CHAT_ID：' + ownerChatId + '\n兩者不一致，所以沒有記帳。請把 Script Properties 的 OWNER_CHAT_ID 改成目前 chat_id。');
 }
 
 function isRateLimitedTelegramMessage(chatId, text) {
