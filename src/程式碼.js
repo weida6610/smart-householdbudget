@@ -729,7 +729,7 @@ function parseQuickTransaction(text) {
   var type = null;
   if (parts[0] === '支出' || parts[0].toLowerCase() === 'expense') type = 'expense';
   if (parts[0] === '收入' || parts[0].toLowerCase() === 'income') type = 'income';
-  if (!type) return null;
+  if (!type) return parseSimpleTransaction(parts);
 
   var category = type === 'income' ? '其他收入' : '未分類';
   var amountIndex = 1;
@@ -742,21 +742,118 @@ function parseQuickTransaction(text) {
   return {
     type: type,
     category: category,
-    amount: Number(parts[amountIndex]),
+    amount: Number(String(parts[amountIndex]).replace(/,/g, '')),
     note: parts.slice(amountIndex + 1).join(' '),
     date: todayString(),
+    account: '現金',
     source: 'telegram-quick'
   };
 }
 
+function parseSimpleTransaction(parts) {
+  var amountIndex = -1;
+  for (var i = 0; i < parts.length; i++) {
+    if (isAmount(parts[i])) {
+      amountIndex = i;
+      break;
+    }
+  }
+  if (amountIndex <= 0) return null;
+
+  var item = parts.slice(0, amountIndex).join(' ');
+  var amount = Number(String(parts[amountIndex]).replace(/,/g, ''));
+  var rest = parts.slice(amountIndex + 1);
+  var parsedDate = null;
+  var accountParts = [];
+  rest.forEach(function(part) {
+    var date = parseFlexibleDate(part);
+    if (!parsedDate && date) {
+      parsedDate = date;
+    } else {
+      accountParts.push(part);
+    }
+  });
+
+  var type = inferTransactionType(item, accountParts);
+  return {
+    type: type,
+    category: inferCategory(item, type),
+    amount: amount,
+    note: item,
+    date: parsedDate || todayString(),
+    account: accountParts.join(' ') || '現金',
+    source: 'telegram-text'
+  };
+}
+
+function parseFlexibleDate(text) {
+  var value = String(text || '').trim();
+  if (!value) return null;
+
+  if (value === '今天' || value.toLowerCase() === 'today') return todayString();
+
+  if (value === '昨天') {
+    var yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return Utilities.formatDate(yesterday, 'Asia/Taipei', 'yyyy-MM-dd');
+  }
+
+  var yyyyMMdd = value.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  if (yyyyMMdd) return buildDateString(Number(yyyyMMdd[1]), Number(yyyyMMdd[2]), Number(yyyyMMdd[3]));
+
+  var monthDay = value.match(/^(\d{1,2})[-\/](\d{1,2})$/);
+  if (monthDay) {
+    var year = Number(Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy'));
+    return buildDateString(year, Number(monthDay[1]), Number(monthDay[2]));
+  }
+
+  var compact = value.match(/^(\d{1,2})(\d{2})$/);
+  if (compact) {
+    var currentYear = Number(Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy'));
+    return buildDateString(currentYear, Number(compact[1]), Number(compact[2]));
+  }
+
+  return null;
+}
+
+function buildDateString(year, month, day) {
+  var date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return Utilities.formatDate(date, 'Asia/Taipei', 'yyyy-MM-dd');
+}
+
+function inferTransactionType(item, accountParts) {
+  var text = (String(item || '') + ' ' + accountParts.join(' ')).toLowerCase();
+  if (/收入|薪水|薪資|獎金|轉入|入帳|income|salary|bonus/.test(text)) return 'income';
+  return 'expense';
+}
+
+function inferCategory(item, type) {
+  var text = String(item || '');
+  if (type === 'income') {
+    if (/薪水|薪資|salary/.test(text)) return '薪資';
+    if (/獎金|bonus/.test(text)) return '獎金';
+    return '其他收入';
+  }
+
+  if (/早餐|午餐|晚餐|餐|咖啡|飲料|便當|全聯|家樂福|超商|7-?11|food|coffee/.test(text)) return '餐飲';
+  if (/捷運|公車|計程車|uber|油|停車|交通/.test(text.toLowerCase())) return '交通';
+  if (/房租|水電|瓦斯|管理費|住家|房貸/.test(text)) return '住家';
+  if (/藥|醫|診所|掛號|保健/.test(text)) return '醫療';
+  if (/課程|書|學習|教育/.test(text)) return '學習';
+  if (/電影|遊戲|娛樂/.test(text)) return '娛樂';
+  return '未分類';
+}
+
 function isAmount(value) {
-  return /^\d+(\.\d+)?$/.test(String(value || ''));
+  return /^\d{1,3}(,\d{3})*(\.\d+)?$|^\d+(\.\d+)?$/.test(String(value || ''));
 }
 
 function formatTransactionLine(tx) {
   var label = tx.type === 'income' ? '收入' : '支出';
   var note = tx.note ? ' ' + tx.note : '';
-  return label + ' ' + tx.category + ' ' + formatMoney(tx.amount) + note;
+  var account = tx.account ? ' @' + tx.account : '';
+  return label + ' ' + tx.category + ' ' + formatMoney(tx.amount) + account + note;
 }
 
 function formatMoney(value) {
