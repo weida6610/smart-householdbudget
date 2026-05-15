@@ -699,6 +699,11 @@ function handleTelegramMessage(message) {
     return;
   }
 
+  if (text === '/total') {
+    sendMonthlyExpenseTotal(chatId);
+    return;
+  }
+
   var quick = parseQuickTransaction(text);
   if (quick && quick.error) {
     sendTelegramMessage(chatId, quick.error, mainReplyKeyboard());
@@ -707,7 +712,10 @@ function handleTelegramMessage(message) {
   if (quick) {
     try {
       var tx = createTransaction(quick, { chatId: chatId, method: 'telegram' });
-      sendTelegramMessage(chatId, '已新增：' + formatTransactionLine(tx), mainReplyKeyboard());
+      sendTelegramMessage(chatId, [
+        '已新增：' + formatTransactionLine(tx),
+        '本月小計：' + formatMoney(getMonthlyExpenseSubtotal(tx, { chatId: chatId, method: 'telegram' }))
+      ].join('\n'), mainReplyKeyboard());
     } catch (err) {
       sendTelegramMessage(chatId, '儲存失敗：' + String(err && err.message ? err.message : err), mainReplyKeyboard());
     }
@@ -778,6 +786,18 @@ function sendMonthlySummary(chatId) {
     '筆數：' + summary.count
   ];
   sendTelegramMessage(chatId, lines.join('\n'), mainReplyKeyboard());
+}
+
+function sendMonthlyExpenseTotal(chatId) {
+  var month = currentMonth();
+  var summary = getSummary({ month: month }, { chatId: chatId, method: 'telegram' });
+  sendTelegramMessage(chatId, month + ' 本月總和：' + formatMoney(summary.expense), mainReplyKeyboard());
+}
+
+function getMonthlyExpenseSubtotal(tx, actor) {
+  var month = String(tx.date || todayString()).slice(0, 7);
+  var summary = getSummary({ month: month }, actor);
+  return summary.expense;
 }
 
 function parseQuickTransaction(text) {
