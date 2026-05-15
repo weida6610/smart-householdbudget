@@ -507,7 +507,7 @@ function handleTelegramUpdate(update) {
 function handleTelegramMessage(message) {
   var chatId = String(message.chat.id);
   var text = String(message.text || '').trim();
-  if (text === '/whoami' || text === '我的ID') {
+  if (isWhoamiCommand(text)) {
     sendTelegramMessage(chatId, '目前 chat_id：' + chatId + '\n請把這個值填到 Script Properties 的 OWNER_CHAT_ID。');
     return;
   }
@@ -541,6 +541,10 @@ function handleTelegramMessage(message) {
   }
 
   sendTelegramMessage(chatId, '可用下方選單開啟工具，或輸入：支出 餐飲 120 午餐', mainReplyKeyboard());
+}
+
+function isWhoamiCommand(text) {
+  return /^\/whoami(@[A-Za-z0-9_]+)?$/i.test(String(text || '').trim()) || text === '我的ID';
 }
 
 function sendStartMessage(chatId) {
