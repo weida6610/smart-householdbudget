@@ -40,6 +40,7 @@
     setDefaults();
     renderAll();
     if (state.apiUrl) {
+      loadCachedData();
       loadData();
     } else {
       setStatus('請先到設定填入 Apps Script API URL。');
@@ -119,20 +120,53 @@
     if (!state.apiUrl) return;
     setLoading(true, '正在讀取 Google Sheet...');
     try {
-      var results = await Promise.all([
-        apiRequest('categories', {}),
-        apiRequest('summary', { month: state.month }),
-        apiRequest('listTransactions', { month: state.month })
-      ]);
-      state.categories = results[0].data && results[0].data.length ? results[0].data : fallbackCategories;
-      state.summary = results[1].data;
-      state.transactions = results[2].data || [];
+      var result = await apiRequest('bootstrap', { month: state.month });
+      var data = result.data || {};
+      state.categories = data.categories && data.categories.length ? data.categories : fallbackCategories;
+      state.summary = data.summary;
+      state.transactions = data.transactions || [];
       renderAll();
+      saveCachedData();
       setStatus('已同步 ' + state.month + ' 資料。');
     } catch (err) {
       setStatus('讀取失敗：' + err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function cacheKey() {
+    return 'shb.cache.' + btoa(unescape(encodeURIComponent(state.apiUrl + '|' + state.month)));
+  }
+
+  function loadCachedData() {
+    try {
+      var raw = localStorage.getItem(cacheKey());
+      if (!raw) return;
+      var cached = JSON.parse(raw);
+      if (!cached || !cached.data) return;
+      state.categories = cached.data.categories && cached.data.categories.length ? cached.data.categories : fallbackCategories;
+      state.summary = cached.data.summary || state.summary;
+      state.transactions = cached.data.transactions || [];
+      renderAll();
+      setStatus('已顯示暫存資料，正在同步 Google Sheet...');
+    } catch (err) {
+      localStorage.removeItem(cacheKey());
+    }
+  }
+
+  function saveCachedData() {
+    try {
+      localStorage.setItem(cacheKey(), JSON.stringify({
+        savedAt: Date.now(),
+        data: {
+          categories: state.categories,
+          summary: state.summary,
+          transactions: state.transactions
+        }
+      }));
+    } catch (err) {
+      // Ignore storage quota or private-mode failures.
     }
   }
 
@@ -378,4 +412,3 @@
       .replace(/'/g, '&#039;');
   }
 })();
-

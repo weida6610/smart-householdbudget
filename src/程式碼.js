@@ -116,6 +116,7 @@ function handleApiRequest(body) {
   var actor = requireAuthorizedActor(body);
 
   if (action === 'setup') return jsonResponse({ ok: true, data: setup() });
+  if (action === 'bootstrap') return jsonResponse({ ok: true, data: getBootstrap(body.payload || {}, actor) });
   if (action === 'categories') return jsonResponse({ ok: true, data: listCategories() });
   if (action === 'listTransactions') return jsonResponse({ ok: true, data: listTransactions(body.payload || {}, actor) });
   if (action === 'summary') return jsonResponse({ ok: true, data: getSummary(body.payload || {}, actor) });
@@ -418,6 +419,16 @@ function listCategories() {
     });
 }
 
+function getBootstrap(payload, actor) {
+  var month = payload.month || currentMonth();
+  var transactions = listTransactions({ month: month }, actor);
+  return {
+    categories: listCategories(),
+    summary: summarizeTransactions(month, transactions),
+    transactions: transactions
+  };
+}
+
 function createTransaction(payload, actor) {
   var tx = normalizeTransactionPayload(payload, actor);
   var sheet = ensureTransactionSheet();
@@ -481,6 +492,10 @@ function listTransactions(payload, actor) {
 function getSummary(payload, actor) {
   var month = payload.month || currentMonth();
   var transactions = listTransactions({ month: month }, actor);
+  return summarizeTransactions(month, transactions);
+}
+
+function summarizeTransactions(month, transactions) {
   var totals = transactions.reduce(function(acc, tx) {
     var amount = Number(tx.amount || 0);
     if (tx.type === 'income') acc.income += amount;
@@ -665,8 +680,12 @@ function handleTelegramMessage(message) {
 
   var quick = parseQuickTransaction(text);
   if (quick) {
-    var tx = createTransaction(quick, { chatId: chatId, method: 'telegram' });
-    sendTelegramMessage(chatId, '已新增：' + formatTransactionLine(tx), mainReplyKeyboard());
+    try {
+      var tx = createTransaction(quick, { chatId: chatId, method: 'telegram' });
+      sendTelegramMessage(chatId, '已新增：' + formatTransactionLine(tx), mainReplyKeyboard());
+    } catch (err) {
+      sendTelegramMessage(chatId, '儲存失敗：' + String(err && err.message ? err.message : err), mainReplyKeyboard());
+    }
     return;
   }
 
