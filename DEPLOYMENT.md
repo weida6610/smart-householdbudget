@@ -107,8 +107,8 @@ Expected behavior:
 - Quick entry works with text like:
 
 ```text
-支出 餐飲 120 午餐
-收入 薪資 50000 五月薪水
+午餐 120 今天 現金 餐飲
+五月薪水 50000 2026-05-15 銀行 薪資
 ```
 
 ## 6. Browser Check

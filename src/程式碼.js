@@ -700,6 +700,10 @@ function handleTelegramMessage(message) {
   }
 
   var quick = parseQuickTransaction(text);
+  if (quick && quick.error) {
+    sendTelegramMessage(chatId, quick.error, mainReplyKeyboard());
+    return;
+  }
   if (quick) {
     try {
       var tx = createTransaction(quick, { chatId: chatId, method: 'telegram' });
@@ -710,7 +714,7 @@ function handleTelegramMessage(message) {
     return;
   }
 
-  sendTelegramMessage(chatId, '可用下方選單開啟工具，或輸入：支出 餐飲 120 午餐', mainReplyKeyboard());
+  sendTelegramMessage(chatId, quickTransactionFormatMessage(), mainReplyKeyboard());
 }
 
 function isWhoamiCommand(text) {
@@ -792,14 +796,17 @@ function parseQuickTransaction(text) {
     amountIndex = 2;
   }
   if (!isAmount(parts[amountIndex])) return null;
+  if (parts.length < amountIndex + 4) return invalidQuickTransaction();
+  var parsedDate = parseFlexibleDate(parts[amountIndex + 1]);
+  if (!parsedDate) return invalidQuickTransaction();
 
   return {
     type: type,
-    category: category,
+    category: parts.slice(amountIndex + 3).join(' ') || category,
     amount: Number(String(parts[amountIndex]).replace(/,/g, '')),
-    note: parts.slice(amountIndex + 1).join(' '),
-    date: todayString(),
-    account: '現金',
+    note: parts.slice(1, amountIndex).join(' ') || parts.slice(amountIndex + 3).join(' '),
+    date: parsedDate,
+    account: parts[amountIndex + 2],
     source: 'telegram-quick'
   };
 }
@@ -817,27 +824,34 @@ function parseSimpleTransaction(parts) {
   var item = parts.slice(0, amountIndex).join(' ');
   var amount = Number(String(parts[amountIndex]).replace(/,/g, ''));
   var rest = parts.slice(amountIndex + 1);
-  var parsedDate = null;
-  var accountParts = [];
-  rest.forEach(function(part) {
-    var date = parseFlexibleDate(part);
-    if (!parsedDate && date) {
-      parsedDate = date;
-    } else {
-      accountParts.push(part);
-    }
-  });
+  var parsedDate = parseFlexibleDate(rest[0]);
+  if (rest.length < 3 || !parsedDate || !rest[1] || !rest[2]) return invalidQuickTransaction();
 
-  var type = inferTransactionType(item, accountParts);
+  var account = rest[1];
+  var categoryText = rest.slice(2).join(' ');
+
+  var type = inferTransactionType(item, [account, categoryText]);
   return {
     type: type,
-    category: inferCategory(item, type),
+    category: categoryText || inferCategory(item, type),
     amount: amount,
     note: item,
     date: parsedDate || todayString(),
-    account: accountParts.join(' ') || '現金',
+    account: account,
     source: 'telegram-text'
   };
+}
+
+function invalidQuickTransaction() {
+  return { error: quickTransactionFormatMessage() };
+}
+
+function quickTransactionFormatMessage() {
+  return [
+    '記帳格式：品項 金額 日期 金流 分類',
+    '範例：午餐 120 今天 現金 餐飲',
+    '日期可用：今天、昨天、5/15、2026-05-15'
+  ].join('\n');
 }
 
 function parseFlexibleDate(text) {
