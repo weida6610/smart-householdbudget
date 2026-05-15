@@ -109,6 +109,7 @@ Expected behavior:
 ```text
 午餐 120 今天 現金 餐飲
 五月薪水 50000 2026-05-15 銀行 薪資
+"iPhone 16 Pro" 35000 今天 信用卡 3C
 ```
 
 ## 6. Browser Check

@@ -781,7 +781,7 @@ function sendMonthlySummary(chatId) {
 }
 
 function parseQuickTransaction(text) {
-  var parts = text.split(/\s+/).filter(Boolean);
+  var parts = tokenizeQuickTransactionText(text);
   if (!parts.length) return null;
 
   var type = null;
@@ -809,6 +809,52 @@ function parseQuickTransaction(text) {
     account: parts[amountIndex + 2],
     source: 'telegram-quick'
   };
+}
+
+function tokenizeQuickTransactionText(text) {
+  var value = String(text || '').trim();
+  var tokens = [];
+  var current = '';
+  var quoteClose = '';
+  var quotePairs = {
+    '"': '"',
+    "'": "'",
+    '「': '」',
+    '『': '』',
+    '“': '”',
+    '‘': '’'
+  };
+
+  for (var i = 0; i < value.length; i++) {
+    var ch = value.charAt(i);
+
+    if (quoteClose) {
+      if (ch === quoteClose) {
+        quoteClose = '';
+      } else {
+        current += ch;
+      }
+      continue;
+    }
+
+    if (quotePairs[ch]) {
+      quoteClose = quotePairs[ch];
+      continue;
+    }
+
+    if (/\s/.test(ch)) {
+      if (current) {
+        tokens.push(current);
+        current = '';
+      }
+      continue;
+    }
+
+    current += ch;
+  }
+
+  if (current) tokens.push(current);
+  return tokens;
 }
 
 function parseSimpleTransaction(parts) {
@@ -850,6 +896,7 @@ function quickTransactionFormatMessage() {
   return [
     '記帳格式：品項 金額 日期 金流 分類',
     '範例：午餐 120 今天 現金 餐飲',
+    '品項含數字或容易誤判時可用引號：\"iPhone 16 Pro\" 35000 今天 信用卡 3C',
     '日期可用：今天、昨天、5/15、2026-05-15'
   ].join('\n');
 }
