@@ -648,6 +648,26 @@ function handleTelegramUpdate(update) {
   if (update.callback_query) answerCallbackQuery(update.callback_query.id, '');
 }
 
+function checkTelegramUpdates() {
+  var props = getProps();
+  var offset = Number(props.getProperty('TG_POLL_OFFSET') || '0');
+  var response = telegramApi('getUpdates', {
+    offset: offset,
+    limit: 20,
+    timeout: 0,
+    allowed_updates: ['message', 'callback_query']
+  });
+
+  if (!response.ok || !response.result || !response.result.length) return;
+
+  response.result.forEach(function(update) {
+    if (!isDuplicateTelegramUpdate(update)) handleTelegramUpdate(update);
+    offset = Math.max(offset, Number(update.update_id) + 1);
+  });
+
+  props.setProperty('TG_POLL_OFFSET', String(offset));
+}
+
 function handleTelegramMessage(message) {
   var chatId = normalizeChatId(message.chat.id);
   var text = String(message.text || '').trim();
@@ -940,6 +960,25 @@ function setupTelegramWebhook() {
     url: webhookUrl,
     drop_pending_updates: true
   });
+}
+
+function setupTelegramPolling() {
+  ScriptApp.getProjectTriggers().forEach(function(trigger) {
+    if (trigger.getHandlerFunction && trigger.getHandlerFunction() === 'checkTelegramUpdates') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  telegramApi('deleteWebhook', { drop_pending_updates: true });
+  getProps().deleteProperty('TG_POLL_OFFSET');
+  getProps().deleteProperty('LAST_TG_UPDATE_ID');
+  ScriptApp.newTrigger('checkTelegramUpdates').timeBased().everyMinutes(1).create();
+
+  return {
+    ok: true,
+    mode: 'polling',
+    message: 'Telegram webhook removed; polling trigger installed.'
+  };
 }
 
 function setupTelegramMenu() {
