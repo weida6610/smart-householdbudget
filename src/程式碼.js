@@ -70,6 +70,7 @@ function doPost(e) {
     var body = parseBody(e);
     if (isTelegramUpdate(body)) {
       requireValidWebhookSecret(e);
+      if (isDuplicateTelegramUpdate(body)) return jsonResponse({ ok: true, duplicate: true });
       handleTelegramUpdate(body);
       return jsonResponse({ ok: true });
     }
@@ -86,6 +87,18 @@ function parseBody(e) {
 
 function isTelegramUpdate(body) {
   return body && (body.update_id || body.message || body.callback_query);
+}
+
+function isDuplicateTelegramUpdate(update) {
+  if (!update || update.update_id === undefined || update.update_id === null) return false;
+
+  var props = getProps();
+  var currentId = Number(update.update_id);
+  var lastId = Number(props.getProperty('LAST_TG_UPDATE_ID') || '-1');
+  if (currentId <= lastId) return true;
+
+  props.setProperty('LAST_TG_UPDATE_ID', String(currentId));
+  return false;
 }
 
 function requireValidWebhookSecret(e) {
@@ -507,6 +520,8 @@ function handleTelegramUpdate(update) {
 function handleTelegramMessage(message) {
   var chatId = String(message.chat.id);
   var text = String(message.text || '').trim();
+  if (isRateLimitedTelegramMessage(chatId, text)) return;
+
   if (isWhoamiCommand(text)) {
     sendTelegramMessage(chatId, '目前 chat_id：' + chatId + '\n請把這個值填到 Script Properties 的 OWNER_CHAT_ID。');
     return;
@@ -544,6 +559,20 @@ function handleTelegramMessage(message) {
 
 function isWhoamiCommand(text) {
   return /^\/whoami(@[A-Za-z0-9_]+)?$/i.test(String(text || '').trim()) || text === '我的ID';
+}
+
+function isRateLimitedTelegramMessage(chatId, text) {
+  var normalized = String(text || '').trim();
+  if (!normalized) return false;
+
+  var props = getProps();
+  var key = 'TG_RATE_' + Utilities.base64EncodeWebSafe(String(chatId) + ':' + normalized).slice(0, 80);
+  var now = Date.now();
+  var last = Number(props.getProperty(key) || '0');
+  if (now - last < 8000) return true;
+
+  props.setProperty(key, String(now));
+  return false;
 }
 
 function sendStartMessage(chatId) {
