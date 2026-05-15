@@ -154,7 +154,7 @@ function requireAuthorizedActor(body) {
   }
 
   if (!actor) throw new Error('Unauthorized request');
-  if (ownerChatId && String(actor.chatId) !== String(ownerChatId)) throw new Error('Unauthorized owner');
+  if (ownerChatId && String(actor.chatId) !== String(ownerChatId)) throw new Error('Unauthorized owner. Current chat_id: ' + actor.chatId);
   return actor;
 }
 
@@ -514,7 +514,6 @@ function handleTelegramMessage(message) {
 
   var ownerChatId = getProp(CONFIG.OWNER_CHAT_ID);
   if (ownerChatId && chatId !== String(ownerChatId)) {
-    sendTelegramMessage(chatId, '這是個人記帳工具，目前沒有開放這個帳號使用。');
     return;
   }
 
@@ -663,7 +662,7 @@ function setupTelegramWebhook() {
 
   return telegramApi('setWebhook', {
     url: webhookUrl,
-    drop_pending_updates: false
+    drop_pending_updates: true
   });
 }
 
@@ -686,6 +685,41 @@ function setupTelegramMenu() {
       web_app: { url: miniAppUrl }
     }
   });
+}
+
+function diagnoseTelegramSetup() {
+  var botToken = getProp(CONFIG.BOT_TOKEN);
+  var gasWebAppUrl = getProp(CONFIG.GAS_WEBAPP_URL);
+  var miniAppUrl = getProp(CONFIG.MINI_APP_URL);
+  var ownerChatId = getProp(CONFIG.OWNER_CHAT_ID);
+  var webhookSecret = getProps().getProperty(CONFIG.WEBHOOK_SECRET);
+  var result = {
+    hasBotToken: Boolean(botToken),
+    ownerChatId: ownerChatId || '',
+    gasWebAppUrl: gasWebAppUrl || '',
+    miniAppUrl: miniAppUrl || '',
+    hasWebhookSecret: Boolean(webhookSecret),
+    expectedWebhookBase: gasWebAppUrl || '',
+    bot: null,
+    webhook: null
+  };
+
+  if (!botToken) return result;
+
+  try {
+    result.bot = telegramApi('getMe', {});
+  } catch (err) {
+    result.bot = { ok: false, error: String(err && err.message ? err.message : err) };
+  }
+
+  try {
+    result.webhook = telegramApi('getWebhookInfo', {});
+  } catch (err2) {
+    result.webhook = { ok: false, error: String(err2 && err2.message ? err2.message : err2) };
+  }
+
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
 }
 
 function configureDeploymentUrls(gasWebAppUrl, miniAppUrl) {
