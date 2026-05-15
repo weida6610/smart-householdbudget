@@ -3,7 +3,7 @@
 ## Source Of Truth
 
 - Frontend source: `C:\Users\User\smart-householdbudget\docs`
-- GAS source: `C:\Users\User\smart-householdbudget\src\Code.js`
+- GAS source: `C:\Users\User\smart-householdbudget\src\程式碼.js`
 - Manifest: `C:\Users\User\smart-householdbudget\src\appsscript.json`
 
 ## Standard Change Flow

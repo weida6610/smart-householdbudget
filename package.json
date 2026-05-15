@@ -8,7 +8,7 @@
     "push": "powershell -ExecutionPolicy Bypass -File ./scripts/Push-Gas.ps1",
     "pull": "powershell -ExecutionPolicy Bypass -File ./scripts/Pull-Gas.ps1",
     "status": "npx clasp status",
-    "test": "node -e \"const fs=require('fs'); new Function(fs.readFileSync('src/Code.js','utf8')); new Function(fs.readFileSync('docs/app.js','utf8')); console.log('parse OK')\""
+    "test": "node -e \"const fs=require('fs'); new Function(fs.readFileSync('src/程式碼.js','utf8')); new Function(fs.readFileSync('docs/app.js','utf8')); console.log('parse OK')\""
   },
   "devDependencies": {
     "@google/clasp": "^3.0.6-alpha"

@@ -9,7 +9,7 @@ Personal bookkeeping tool using:
 ## Main Folders
 
 - `docs/` - GitHub Pages static frontend.
-- `src/` - Google Apps Script backend.
+- `src/` - Google Apps Script backend. Main GAS file: `src/程式碼.js`.
 - `scripts/` - local clasp backup, push, and pull helpers.
 
 ## Sheet Model

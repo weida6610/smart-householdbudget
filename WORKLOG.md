@@ -4,7 +4,7 @@
 
 - Created local project at `C:\Users\User\smart-householdbudget`.
 - Built GitHub Pages-ready frontend in `docs/`.
-- Built Apps Script backend in `src/Code.js` for:
+- Built Apps Script backend in `src\程式碼.js` for:
   - Google Sheet schema setup.
   - Transaction create, update, delete, list, and monthly summary API.
   - Telegram `/start`, reply keyboard, Mini App open button, `/summary`, and quick text entry.
@@ -29,6 +29,7 @@
 - Created deployment `AKfycbyjA1YADkipF30Kwcm1Hxobnjf3zEaZrfVj-4ERb5LPvMyDwbOUsloBNJJzU-sPqQp_jQ` and configured default public URLs in code.
 - Changed the Web App manifest to `ANYONE_ANONYMOUS` for Telegram webhook / Mini App use after user approval.
 - Added `WEBHOOK_SECRET` generation and query-token validation for Telegram webhook POSTs.
+- Renamed local GAS source from `src\Code.js` to `src\程式碼.js` to match the actual Apps Script file shown in the editor, so clasp updates the file being executed.
 - Local checks completed:
   - `npm.cmd test` passed.
   - Preview server responded at `http://127.0.0.1:8125/`.
