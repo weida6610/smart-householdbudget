@@ -506,13 +506,18 @@ function handleTelegramUpdate(update) {
 
 function handleTelegramMessage(message) {
   var chatId = String(message.chat.id);
+  var text = String(message.text || '').trim();
+  if (text === '/whoami' || text === '我的ID') {
+    sendTelegramMessage(chatId, '目前 chat_id：' + chatId + '\n請把這個值填到 Script Properties 的 OWNER_CHAT_ID。');
+    return;
+  }
+
   var ownerChatId = getProp(CONFIG.OWNER_CHAT_ID);
   if (ownerChatId && chatId !== String(ownerChatId)) {
     sendTelegramMessage(chatId, '這是個人記帳工具，目前沒有開放這個帳號使用。');
     return;
   }
 
-  var text = String(message.text || '').trim();
   if (!text || text === '/start') {
     sendStartMessage(chatId);
     return;
