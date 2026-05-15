@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Household Budget</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Personal Ledger</p>
+        <h1>家庭記帳</h1>
+      </div>
+      <label class="month-control">
+        <span>月份</span>
+        <input id="monthInput" type="month">
+      </label>
+    </header>
+
+    <main>
+      <section class="summary-grid" aria-label="本月摘要">
+        <article class="metric">
+          <span>收入</span>
+          <strong id="incomeValue">NT$0</strong>
+        </article>
+        <article class="metric">
+          <span>支出</span>
+          <strong id="expenseValue">NT$0</strong>
+        </article>
+        <article class="metric balance">
+          <span>結餘</span>
+          <strong id="balanceValue">NT$0</strong>
+        </article>
+      </section>
+
+      <nav class="tabs" aria-label="主要功能">
+        <button class="tab-button active" type="button" data-tab="entry">記帳</button>
+        <button class="tab-button" type="button" data-tab="records">明細</button>
+        <button class="tab-button" type="button" data-tab="analysis">分析</button>
+        <button class="tab-button" type="button" data-tab="settings">設定</button>
+      </nav>
+
+      <section id="entryTab" class="tab-panel active">
+        <form id="transactionForm" class="entry-form">
+          <input id="transactionId" type="hidden">
+
+          <div class="segmented" role="radiogroup" aria-label="收支類型">
+            <label>
+              <input type="radio" name="type" value="expense" checked>
+              <span>支出</span>
+            </label>
+            <label>
+              <input type="radio" name="type" value="income">
+              <span>收入</span>
+            </label>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              <span>日期</span>
+              <input id="dateInput" type="date" required>
+            </label>
+            <label>
+              <span>金額</span>
+              <input id="amountInput" type="text" inputmode="decimal" pattern="[0-9,]+(\\.[0-9]+)?" required>
+            </label>
+            <label>
+              <span>分類</span>
+              <select id="categoryInput" required></select>
+            </label>
+            <label>
+              <span>帳戶</span>
+              <input id="accountInput" type="text" value="現金" autocomplete="off">
+            </label>
+          </div>
+
+          <label>
+            <span>對象</span>
+            <input id="payeeInput" type="text" autocomplete="off" placeholder="店家、來源或對方">
+          </label>
+
+          <label>
+            <span>備註</span>
+            <textarea id="noteInput" rows="3" placeholder="例如：午餐、房租、加油"></textarea>
+          </label>
+
+          <div class="actions">
+            <button id="submitButton" class="primary" type="submit">新增一筆</button>
+            <button id="resetButton" type="button">清空</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="recordsTab" class="tab-panel">
+        <div class="list-toolbar">
+          <strong id="recordCount">0 筆</strong>
+          <button id="refreshButton" type="button">重新整理</button>
+        </div>
+        <div id="recordsList" class="records-list"></div>
+      </section>
+
+      <section id="analysisTab" class="tab-panel">
+        <div id="categorySummary" class="category-summary"></div>
+      </section>
+
+      <section id="settingsTab" class="tab-panel">
+        <form id="settingsForm" class="settings-form">
+          <label>
+            <span>Apps Script API URL</span>
+            <input id="apiUrlInput" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+          </label>
+          <label>
+            <span>Browser App Key</span>
+            <input id="appKeyInput" type="password" autocomplete="off">
+          </label>
+          <button class="primary" type="submit">儲存設定</button>
+        </form>
+      </section>
+    </main>
+
+    <div id="statusBar" class="status-bar" role="status">尚未連線</div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

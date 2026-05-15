@@ -1,0 +1,16 @@
+{
+  "name": "smart-householdbudget",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Personal household budget tracker with GitHub Pages, Google Sheets, and Telegram Mini App support.",
+  "scripts": {
+    "backup": "powershell -ExecutionPolicy Bypass -File ./scripts/Backup-Gas.ps1",
+    "push": "powershell -ExecutionPolicy Bypass -File ./scripts/Push-Gas.ps1",
+    "pull": "powershell -ExecutionPolicy Bypass -File ./scripts/Pull-Gas.ps1",
+    "status": "npx clasp status",
+    "test": "node -e \"const fs=require('fs'); new Function(fs.readFileSync('src/Code.js','utf8')); new Function(fs.readFileSync('docs/app.js','utf8')); console.log('parse OK')\""
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.0.6-alpha"
+  }
+}
