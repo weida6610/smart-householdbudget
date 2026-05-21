@@ -13,6 +13,7 @@
     categories: [],
     transactions: [],
     summary: null,
+    yearToDateSummary: null,
     activeTab: 'entry',
     loading: false
   };
@@ -54,6 +55,7 @@
       'incomeValue',
       'expenseValue',
       'balanceValue',
+      'annualExpenseValue',
       'transactionForm',
       'transactionId',
       'dateInput',
@@ -124,6 +126,7 @@
       var data = result.data || {};
       state.categories = data.categories && data.categories.length ? data.categories : fallbackCategories;
       state.summary = data.summary;
+      state.yearToDateSummary = data.yearToDateSummary || null;
       state.transactions = data.transactions || [];
       renderAll();
       saveCachedData();
@@ -147,6 +150,7 @@
       if (!cached || !cached.data) return;
       state.categories = cached.data.categories && cached.data.categories.length ? cached.data.categories : fallbackCategories;
       state.summary = cached.data.summary || state.summary;
+      state.yearToDateSummary = cached.data.yearToDateSummary || state.yearToDateSummary;
       state.transactions = cached.data.transactions || [];
       renderAll();
       setStatus('已顯示暫存資料，正在同步 Google Sheet...');
@@ -162,6 +166,7 @@
         data: {
           categories: state.categories,
           summary: state.summary,
+          yearToDateSummary: state.yearToDateSummary,
           transactions: state.transactions
         }
       }));
@@ -280,9 +285,11 @@
 
   function renderSummary() {
     var summary = state.summary || { income: 0, expense: 0, balance: 0 };
+    var yearToDate = state.yearToDateSummary || { expense: 0 };
     els.incomeValue.textContent = formatMoney(summary.income);
     els.expenseValue.textContent = formatMoney(summary.expense);
     els.balanceValue.textContent = formatMoney(summary.balance);
+    els.annualExpenseValue.textContent = formatMoney(yearToDate.expense);
   }
 
   function renderCategoryOptions() {

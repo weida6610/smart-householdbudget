@@ -120,6 +120,7 @@ function handleApiRequest(body) {
   if (action === 'categories') return jsonResponse({ ok: true, data: listCategories() });
   if (action === 'listTransactions') return jsonResponse({ ok: true, data: listTransactions(body.payload || {}, actor) });
   if (action === 'summary') return jsonResponse({ ok: true, data: getSummary(body.payload || {}, actor) });
+  if (action === 'yearToDateSummary') return jsonResponse({ ok: true, data: getYearToDateSummary(body.payload || {}, actor) });
   if (action === 'createTransaction') return jsonResponse({ ok: true, data: createTransaction(body.payload || {}, actor) });
   if (action === 'updateTransaction') return jsonResponse({ ok: true, data: updateTransaction(body.payload || {}, actor) });
   if (action === 'deleteTransaction') return jsonResponse({ ok: true, data: deleteTransaction(body.payload || {}, actor) });
@@ -425,6 +426,7 @@ function getBootstrap(payload, actor) {
   return {
     categories: listCategories(),
     summary: summarizeTransactions(month, transactions),
+    yearToDateSummary: getYearToDateSummary({}, actor),
     transactions: transactions
   };
 }
@@ -493,6 +495,38 @@ function getSummary(payload, actor) {
   var month = payload.month || currentMonth();
   var transactions = listTransactions({ month: month }, actor);
   return summarizeTransactions(month, transactions);
+}
+
+function getYearToDateSummary(payload, actor) {
+  var year = Number(payload.year || Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy'));
+  var startDate = year + '-01-01';
+  var currentYear = Number(Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy'));
+  var endDate = year === currentYear ? todayString() : year + '-12-31';
+  var transactions = listTransactionsInDateRange(startDate, endDate, actor);
+  var summary = summarizeTransactions(String(year), transactions);
+  summary.year = year;
+  summary.startDate = startDate;
+  summary.endDate = endDate;
+  return summary;
+}
+
+function listTransactionsInDateRange(startDate, endDate, actor) {
+  var sheet = ensureTransactionSheet();
+  if (sheet.getLastRow() < 2) return [];
+
+  var map = getHeaderMap(sheet);
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues()
+    .map(function(row) { return rowToTransaction(row, map); })
+    .filter(function(tx) { return canAccess(tx, actor); })
+    .filter(function(tx) {
+      var date = String(tx.date || '');
+      return date >= startDate && date <= endDate;
+    })
+    .sort(function(a, b) {
+      if (a.date === b.date) return String(b.updated_at).localeCompare(String(a.updated_at));
+      return String(b.date).localeCompare(String(a.date));
+    })
+    .map(serializeTransaction);
 }
 
 function summarizeTransactions(month, transactions) {
@@ -778,11 +812,13 @@ function sendOpenAppMessage(chatId) {
 
 function sendMonthlySummary(chatId) {
   var summary = getSummary({ month: currentMonth() }, { chatId: chatId, method: 'telegram' });
+  var yearToDate = getYearToDateSummary({}, { chatId: chatId, method: 'telegram' });
   var lines = [
     currentMonth() + ' 摘要',
     '收入：' + formatMoney(summary.income),
     '支出：' + formatMoney(summary.expense),
     '結餘：' + formatMoney(summary.balance),
+    '本年度支出：' + formatMoney(yearToDate.expense),
     '筆數：' + summary.count
   ];
   sendTelegramMessage(chatId, lines.join('\n'), mainReplyKeyboard());
