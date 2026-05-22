@@ -608,10 +608,10 @@ function rowToTransaction(row, map) {
     id: row[map.id],
     timestamp: row[map.timestamp],
     date: normalizeSheetDate(row[map.date]),
-    type: row[map.type],
+    type: normalizeSheetType(row[map.type]),
     category: row[map.category],
     account: row[map.account],
-    amount: Number(row[map.amount] || 0),
+    amount: normalizeSheetAmount(row[map.amount]),
     currency: row[map.currency],
     note: row[map.note],
     payee: row[map.payee],
@@ -649,7 +649,22 @@ function normalizeSheetDate(value) {
   if (Object.prototype.toString.call(value) === '[object Date]') {
     return Utilities.formatDate(value, 'Asia/Taipei', 'yyyy-MM-dd');
   }
-  return String(value || '');
+  var text = String(value || '').trim();
+  var match = text.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  if (match) return buildDateString(Number(match[1]), Number(match[2]), Number(match[3])) || text;
+  return text;
+}
+
+function normalizeSheetType(value) {
+  var text = String(value || '').trim().toLowerCase();
+  if (text === 'income' || text === '收入') return 'income';
+  if (text === 'expense' || text === '支出') return 'expense';
+  return text;
+}
+
+function normalizeSheetAmount(value) {
+  if (typeof value === 'number') return value;
+  return Number(String(value || '').replace(/,/g, '')) || 0;
 }
 
 function normalizeDateTime(value) {
