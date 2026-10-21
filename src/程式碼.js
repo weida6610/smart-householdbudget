@@ -438,7 +438,7 @@ function createTransaction(payload, actor) {
   tx.id = makeId();
   tx.timestamp = now;
   tx.updated_at = now;
-  sheet.appendRow(HEADERS.TRANSACTIONS.map(function(header) { return tx[header]; }));
+  sheet.appendRow(HEADERS.TRANSACTIONS.map(function(header) { return header === 'date' ? formatRocDate(tx.date) : tx[header]; }));
   return serializeTransaction(tx);
 }
 
@@ -461,7 +461,7 @@ function updateTransaction(payload, actor) {
   tx.updated_at = new Date();
 
   sheet.getRange(found.rowNumber, 1, 1, HEADERS.TRANSACTIONS.length)
-    .setValues([HEADERS.TRANSACTIONS.map(function(header) { return tx[header]; })]);
+    .setValues([HEADERS.TRANSACTIONS.map(function(header) { return header === 'date' ? formatRocDate(tx.date) : tx[header]; })]);
   return serializeTransaction(tx);
 }
 
@@ -583,11 +583,9 @@ function normalizeDate(value) {
   if (Object.prototype.toString.call(value) === '[object Date]') {
     return Utilities.formatDate(value, 'Asia/Taipei', 'yyyy-MM-dd');
   }
-  var text = String(value || '').trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) throw new Error('Date must be yyyy-MM-dd');
-  var parsed = new Date(text + 'T00:00:00+08:00');
-  if (isNaN(parsed.getTime())) throw new Error('Invalid date');
-  return text;
+  var parsed = parseFlexibleDate(value);
+  if (!parsed) throw new Error('日期須包含年份，例如 115/10/21 或 2026-10-21');
+  return parsed;
 }
 
 function findTransactionRow(sheet, id, actor) {
@@ -650,9 +648,7 @@ function normalizeSheetDate(value) {
     return Utilities.formatDate(value, 'Asia/Taipei', 'yyyy-MM-dd');
   }
   var text = String(value || '').trim();
-  var match = text.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
-  if (match) return buildDateString(Number(match[1]), Number(match[2]), Number(match[3])) || text;
-  return text;
+  return parseFlexibleDate(text) || text;
 }
 
 function normalizeSheetType(value) {
@@ -966,9 +962,9 @@ function invalidQuickTransaction() {
 function quickTransactionFormatMessage() {
   return [
     '記帳格式：品項 金額 日期 金流 分類',
-    '範例：午餐 120 今天 現金 餐飲',
-    '品項含數字或容易誤判時可用引號：\"iPhone 16 Pro\" 35000 今天 信用卡 3C',
-    '日期可用：今天、昨天、5/15、2026-05-15'
+    '範例：午餐 120 115/10/21 現金 餐飲',
+    '品項含數字或容易誤判時可用引號：\"iPhone 16 Pro\" 35000 115/10/21 信用卡 3C',
+    '日期必須包含年份：115/10/21 或 2026-10-21；不接受只有月日、今天或昨天。'
   ].join('\n');
 }
 
@@ -976,36 +972,24 @@ function parseFlexibleDate(text) {
   var value = String(text || '').trim();
   if (!value) return null;
 
-  if (value === '今天' || value.toLowerCase() === 'today') return todayString();
-
-  if (value === '昨天') {
-    var yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    return Utilities.formatDate(yesterday, 'Asia/Taipei', 'yyyy-MM-dd');
-  }
-
-  var yyyyMMdd = value.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
-  if (yyyyMMdd) return buildDateString(Number(yyyyMMdd[1]), Number(yyyyMMdd[2]), Number(yyyyMMdd[3]));
-
-  var monthDay = value.match(/^(\d{1,2})[-\/](\d{1,2})$/);
-  if (monthDay) {
-    var year = Number(Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy'));
-    return buildDateString(year, Number(monthDay[1]), Number(monthDay[2]));
-  }
-
-  var compact = value.match(/^(\d{1,2})(\d{2})$/);
-  if (compact) {
-    var currentYear = Number(Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy'));
-    return buildDateString(currentYear, Number(compact[1]), Number(compact[2]));
+  var match = value.match(/^(\d{3}|\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  if (match) {
+    var year = Number(match[1]) + (match[1].length === 3 ? 1911 : 0);
+    return buildDateString(year, Number(match[2]), Number(match[3]));
   }
 
   return null;
 }
 
 function buildDateString(year, month, day) {
-  var date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-  return Utilities.formatDate(date, 'Asia/Taipei', 'yyyy-MM-dd');
+  var date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+function formatRocDate(value) {
+  var date = normalizeDate(value);
+  return String(Number(date.slice(0, 4)) - 1911) + '/' + date.slice(5, 7) + '/' + date.slice(8, 10);
 }
 
 function inferTransactionType(item, accountParts) {
