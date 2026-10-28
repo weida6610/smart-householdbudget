@@ -438,7 +438,7 @@ function createTransaction(payload, actor) {
   tx.id = makeId();
   tx.timestamp = now;
   tx.updated_at = now;
-  sheet.appendRow(HEADERS.TRANSACTIONS.map(function(header) { return header === 'date' ? formatRocDate(tx.date) : tx[header]; }));
+  sheet.appendRow(HEADERS.TRANSACTIONS.map(function(header) { return tx[header]; }));
   return serializeTransaction(tx);
 }
 
@@ -461,7 +461,7 @@ function updateTransaction(payload, actor) {
   tx.updated_at = new Date();
 
   sheet.getRange(found.rowNumber, 1, 1, HEADERS.TRANSACTIONS.length)
-    .setValues([HEADERS.TRANSACTIONS.map(function(header) { return header === 'date' ? formatRocDate(tx.date) : tx[header]; })]);
+    .setValues([HEADERS.TRANSACTIONS.map(function(header) { return tx[header]; })]);
   return serializeTransaction(tx);
 }
 
